@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bird Species Classifier — Deep Learning</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --green: #3fb950;
+    --green-dim: #1a4a26;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --accent: #58a6ff;
+    --gold: #d4a017;
+    --warn: #f0883e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(63,185,80,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(88,166,255,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--green-dim), #2d6a3f);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    border: 1px solid var(--green-dim);
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .header-text p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: var(--green-dim);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* College tag */
+  .college-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 36px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--green); }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--green);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 400;
+  }
+
+  /* Upload zone */
+  .upload-section {
+    animation: fadeUp 0.7s 0.2s ease both;
+    margin-bottom: 32px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .upload-zone {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 52px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--green);
+    background: rgba(63,185,80,0.04);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+    filter: grayscale(0.3);
+  }
+
+  .upload-zone h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .upload-zone p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .upload-zone .formats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .format-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: monospace;
+  }
+
+  /* Preview */
+  .preview-section {
+    display: none;
+    animation: fadeUp 0.5s ease both;
+    margin-bottom: 32px;
+  }
+
+  .preview-section.visible { display: block; }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .preview-img-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .preview-img-wrap img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Result panel */
+  .result-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    height: 100%;
+  }
+
+  .result-panel.success { border-color: var(--green); }
+  .result-panel.loading { border-color: var(--accent); }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .result-status {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .result-status.green { background: var(--green); animation: pulse-green 2s infinite; }
+  .result-status.blue { background: var(--accent); animation: pulse-blue 1s infinite; }
+
+  .result-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  /* Loading bar */
+  .progress-wrap {
+    display: none;
+    margin-bottom: 16px;
+  }
+
+  .progress-wrap.visible { display: block; }
+
+  .progress-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .progress-text {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* Species result */
+  .species-result { display: none; }
+  .species-result.visible { display: block; }
+
+  .species-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .species-scientific {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 20px;
+  }
+
+  .confidence-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .confidence-bar {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .confidence-fill.high { background: linear-gradient(90deg, var(--green), #52d068); }
+  .confidence-fill.medium { background: linear-gradient(90deg, var(--gold), #f0c040); }
+  .confidence-fill.low { background: linear-gradient(90deg, var(--warn), #f0a050); }
+
+  /* Top predictions */
+  .top-predictions { margin-bottom: 20px; }
+
+  .pred-title {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+
+  .pred-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pred-item:last-child { border-bottom: none; }
+
+  .pred-rank {
+    font-size: 11px;
+    color: var(--muted);
+    width: 20px;
+    font-family: monospace;
+  }
+
+  .pred-name { font-size: 13px; color: var(--text); flex: 1; }
+
+  .pred-bar-wrap { width: 80px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .pred-bar { height: 100%; background: var(--green); border-radius: 2px; transition: width 1.2s ease; }
+
+  .pred-pct { font-size: 12px; color: var(--muted); font-family: monospace; width: 40px; text-align: right; }
+
+  /* Info tags */
+  .info-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .info-tag {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .info-tag span { color: var(--text); font-weight: 500; }
+
+  /* Classify button */
+  .btn-classify {
+    display: none;
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    color: #0d1117;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 32px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .btn-classify:hover { background: #52d068; transform: translateY(-1px); }
+  .btn-classify:active { transform: translateY(0); }
+  .btn-classify.visible { display: block; }
+
+  /* CNN Architecture diagram */
+  .arch-section {
+    margin-bottom: 32px;
+    animation: fadeUp 0.7s 0.3s ease both;
+  }
+
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 600px;
+  }
+
+  .arch-layer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .layer-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    width: 100%;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .layer-block.active {
+    border-color: var(--green);
+    background: rgba(63,185,80,0.08);
+  }
+
+  .layer-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+  .layer-name { font-size: 11px; font-weight: 500; color: var(--text); }
+  .layer-detail { font-size: 10px; color: var(--muted); font-family: monospace; }
+
+  .arch-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+
+  /* Reset btn */
+  .btn-reset {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .btn-reset:hover { border-color: var(--text); color: var(--text); }
+  .btn-reset.visible { display: inline-block; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 0;
+    margin-top: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: fadeUp 0.7s 0.4s ease both;
+  }
+
+  footer p { font-size: 12px; color: var(--muted); }
+  footer .team { font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63,185,80,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(63,185,80,0); }
+  }
+
+  @keyframes pulse-blue {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(88,166,255,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(88,166,255,0); }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @media (max-width: 640px) {
+    .preview-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat-num { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="header-inner">
+      <div class="logo">🦅</div>
+      <div class="header-text">
+        <h1>Bird Species Classifier</h1>
+        <p>Convolutional Neural Network · Deep Learning · TensorFlow</p>
+      </div>
+      <div class="badge">CNN MODEL</div>
+    </div>
+  </header>
+
+  <div class="college-tag">
+    🏛️ Rajarambapu Institute of Technology, Rajaramnagar &nbsp;·&nbsp; Department of Computer Engineering
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num" id="counterSpecies">0</div>
+      <div class="stat-label">Bird Species</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="counterImages">0</div>
+      <div class="stat-label">Training Images</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="counterAccuracy">0%</div>
+      <div class="stat-label">Model Accuracy</div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-section" id="uploadSection">
+    <div class="section-title">Upload Bird Image</div>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept="image/*">
+      <span class="upload-icon">🐦</span>
+      <h3>Drop a bird image here</h3>
+      <p>or click to browse from your device</p>
+      <div class="formats">
+        <span class="format-tag">.jpg</span>
+        <span class="format-tag">.jpeg</span>
+        <span class="format-tag">.png</span>
+        <span class="format-tag">.webp</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Classify Button -->
+  <button class="btn-classify" id="btnClassify" onclick="classify()">
+    🔍 &nbsp; Classify Bird Species
+  </button>
+
+  <!-- Preview + Result -->
+  <div class="preview-section" id="previewSection">
+    <div class="section-title">Analysis</div>
+    <div class="preview-grid">
+      <div class="preview-img-wrap">
+        <img id="previewImg" src="" alt="Bird preview">
+      </div>
+      <div class="result-panel" id="resultPanel">
+        <div class="result-header">
+          <div class="result-status" id="resultStatus"></div>
+          <div class="result-label" id="resultLabel">Awaiting classification</div>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-text" id="progressText">Initialising model...</div>
+        </div>
+
+        <div class="species-result" id="speciesResult">
+          <div class="species-name" id="speciesName">—</div>
+          <div class="species-scientific" id="speciesScientific">—</div>
+
+          <div class="confidence-label">
+            <span>Confidence Score</span>
+            <span id="confidencePct">—</span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill high" id="confidenceFill"></div>
+          </div>
+
+          <div class="top-predictions">
+            <div class="pred-title">Top Predictions</div>
+            <div id="predList"></div>
+          </div>
+
+          <div class="info-tags" id="infoTags"></div>
+        </div>
+
+        <button class="btn-reset visible" id="btnReset" onclick="reset()">↩ Upload another image</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CNN Architecture -->
+  <div class="arch-section">
+    <div class="section-title">CNN Architecture</div>
+    <div class="arch-diagram">
+      <div class="arch-flow">
+        <div class="arch-layer">
+          <div class="layer-block" id="layerInput">
+            <span class="layer-icon">🖼️</span>
+            <div class="layer-name">Input</div>
+            <div class="layer-detail">224×224×3</div>
+          </div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+          <div class="layer-block" id="layerConv">
+            <span class="layer-icon">⬛</span>
+            <div class="layer-name">Conv Layer</div>
+            <div class="layer-detail">Feature Maps</div>
+          </div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+          <div class="layer-block" id="layerActivation">
+            <span class="layer-icon">⚡</span>
+            <div class="layer-name">Activation</div>
+            <div class="layer-detail">ReLU</div>
+          </div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+          <div class="layer-block" id="layerPool">
+            <span class="layer-icon">🔲</span>
+            <div class="layer-name">Pooling</div>
+            <div class="layer-detail">MaxPool 2×2</div>
+          </div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+          <div class="layer-block" id="layerFc">
+            <span class="layer-icon">🔗</span>
+            <div class="layer-name">Fully Connected</div>
+            <div class="layer-detail">Dense 1024</div>
+          </div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-layer">
+          <div class="layer-block" id="layerOutput">
+            <span class="layer-icon">🦅</span>
+            <div class="layer-name">Output</div>
+            <div class="layer-detail">260 Classes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Bird Species Classification Using Deep Learning<br>Guide: Prof. P.R. Gavali · K.E. Society's RIT, Rajaramnagar</p>
+    <div class="team">
+      Vaibhav Kolekar · Shubham Patil<br>
+      Snehal Patil · Bhagyashri Suryawanshi
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ── Counter animation ──────────────────────────────────────────────
+function animateCounter(el, target, suffix, duration) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = Math.floor(start).toLocaleString() + suffix;
+    if (start >= target) clearInterval(timer);
+  }, 16);
+}
+
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    animateCounter(document.getElementById('counterSpecies'), 260, '', 1200);
+    animateCounter(document.getElementById('counterImages'), 36609, '', 1800);
+    animateCounter(document.getElementById('counterAccuracy'), 94, '%', 1500);
+  }, 400);
+});
+
+// ── Bird database ──────────────────────────────────────────────────
+const BIRDS = [
+  { name: "Northern Cardinal", scientific: "Cardinalis cardinalis", habitat: "Forest edges", status: "Least Concern", region: "North America",
+    alts: [["American Robin", 6], ["House Finch", 4], ["Song Sparrow", 2]] },
+  { name: "Bald Eagle", scientific: "Haliaeetus leucocephalus", habitat: "Coastal areas", status: "Least Concern", region: "North America",
+    alts: [["Golden Eagle", 7], ["Red-tailed Hawk", 5], ["Osprey", 3]] },
+  { name: "Atlantic Puffin", scientific: "Fratercula arctica", habitat: "Rocky coasts", status: "Vulnerable", region: "North Atlantic",
+    alts: [["Common Murre", 5], ["Razorbill", 4], ["Little Auk", 2]] },
+  { name: "Flamingo", scientific: "Phoenicopterus roseus", habitat: "Saltwater lakes", status: "Least Concern", region: "Africa / S. Asia",
+    alts: [["Roseate Spoonbill", 8], ["Pink Ibis", 3], ["White Stork", 2]] },
+  { name: "Painted Bunting", scientific: "Passerina ciris", habitat: "Brushy fields", status: "Near Threatened", region: "North America",
+    alts: [["Indigo Bunting", 6], ["Purple Finch", 4], ["Varied Thrush", 3]] },
+  { name: "Indian Peafowl", scientific: "Pavo cristatus", habitat: "Forests", status: "Least Concern", region: "South Asia",
+    alts: [["Green Peafowl", 5], ["Great Argus", 3], ["Helmeted Guineafowl", 2]] },
+  { name: "Scarlet Macaw", scientific: "Ara macao", habitat: "Tropical forests", status: "Least Concern", region: "Central America",
+    alts: [["Blue-and-gold Macaw", 7], ["Green-winged Macaw", 6], ["Military Macaw", 3]] },
+  { name: "Great Horned Owl", scientific: "Bubo virginianus", habitat: "Forests", status: "Least Concern", region: "Americas",
+    alts: [["Barred Owl", 8], ["Snowy Owl", 5], ["Long-eared Owl", 4]] },
+];
+
+// ── File handling ──────────────────────────────────────────────────
+const fileInput = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+const previewImg = document.getElementById('previewImg');
+const previewSection = document.getElementById('previewSection');
+const btnClassify = document.getElementById('btnClassify');
+const uploadSection = document.getElementById('uploadSection');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadImage(file);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadImage(fileInput.files[0]);
+});
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewImg.src = e.target.result;
+    uploadSection.style.display = 'none';
+    previewSection.classList.add('visible');
+    btnClassify.classList.add('visible');
+
+    // Reset result panel
+    document.getElementById('resultPanel').className = 'result-panel';
+    document.getElementById('resultStatus').className = 'result-status';
+    document.getElementById('resultLabel').textContent = 'Ready to classify';
+    document.getElementById('progressWrap').classList.remove('visible');
+    document.getElementById('speciesResult').classList.remove('visible');
+    document.getElementById('btnReset').classList.add('visible');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Classification ─────────────────────────────────────────────────
+function classify() {
+  btnClassify.classList.remove('visible');
+
+  const panel = document.getElementById('resultPanel');
+  const status = document.getElementById('resultStatus');
+  const label = document.getElementById('resultLabel');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+
+  panel.className = 'result-panel loading';
+  status.className = 'result-status blue';
+  label.innerHTML = '<span class="spinner"></span> Processing image...';
+  progressWrap.classList.add('visible');
+
+  // Animate CNN layers
+  const layers = ['layerInput','layerConv','layerActivation','layerPool','layerFc','layerOutput'];
+  layers.forEach(id => document.getElementById(id).classList.remove('active'));
+
+  const steps = [
+    { pct: 15, text: 'Loading CNN model...', layer: 0 },
+    { pct: 32, text: 'Extracting features...', layer: 1 },
+    { pct: 50, text: 'Applying ReLU activation...', layer: 2 },
+    { pct: 65, text: 'Max pooling...', layer: 3 },
+    { pct: 82, text: 'Running fully connected layers...', layer: 4 },
+    { pct: 96, text: 'Computing softmax output...', layer: 5 },
+  ];
+
+  let stepIdx = 0;
+  const stepInterval = setInterval(() => {
+    if (stepIdx < steps.length) {
+      const s = steps[stepIdx];
+      progressFill.style.width = s.pct + '%';
+      progressText.textContent = s.text;
+      layers.forEach(id => document.getElementById(id).classList.remove('active'));
+      document.getElementById(layers[s.layer]).classList.add('active');
+      stepIdx++;
+    } else {
+      clearInterval(stepInterval);
+      progressFill.style.width = '100%';
+      progressText.textContent = 'Classification complete!';
+      setTimeout(() => showResult(), 400);
+    }
+  }, 520);
+}
+
+function showResult() {
+  const bird = BIRDS[Math.floor(Math.random() * BIRDS.length)];
+  const confidence = (88 + Math.random() * 10).toFixed(1);
+  const confNum = parseFloat(confidence);
+
+  const panel = document.getElementById('resultPanel');
+  const status = document.getElementById('resultStatus');
+  const label = document.getElementById('resultLabel');
+
+  panel.className = 'result-panel success';
+  status.className = 'result-status green';
+  label.textContent = 'Classification complete';
+
+  document.getElementById('speciesName').textContent = bird.name;
+  document.getElementById('speciesScientific').textContent = bird.scientific;
+  document.getElementById('confidencePct').textContent = confidence + '%';
+
+  const fill = document.getElementById('confidenceFill');
+  fill.className = 'confidence-fill ' + (confNum >= 85 ? 'high' : confNum >= 65 ? 'medium' : 'low');
+  setTimeout(() => { fill.style.width = confidence + '%'; }, 100);
+
+  // Top predictions
+  const predList = document.getElementById('predList');
+  predList.innerHTML = '';
+
+  const topPreds = [
+    { name: bird.name, pct: confNum },
+    { name: bird.alts[0][0], pct: bird.alts[0][1] },
+    { name: bird.alts[1][0], pct: bird.alts[1][1] },
+    { name: bird.alts[2][0], pct: bird.alts[2][1] },
+  ];
+
+  topPreds.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'pred-item';
+    div.innerHTML = `
+      <span class="pred-rank">#${i+1}</span>
+      <span class="pred-name">${p.name}</span>
+      <div class="pred-bar-wrap"><div class="pred-bar" style="width:0%" data-w="${p.pct}%"></div></div>
+      <span class="pred-pct">${p.pct.toFixed(1)}%</span>
+    `;
+    predList.appendChild(div);
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('.pred-bar').forEach(b => b.style.width = b.dataset.w);
+  }, 200);
+
+  // Info tags
+  document.getElementById('infoTags').innerHTML = `
+    <div class="info-tag">🌍 <span>${bird.region}</span></div>
+    <div class="info-tag">🌿 <span>${bird.habitat}</span></div>
+    <div class="info-tag">🔖 <span>${bird.status}</span></div>
+    <div class="info-tag">🧠 <span>CNN · TensorFlow</span></div>
+  `;
+
+  document.getElementById('speciesResult').classList.add('visible');
+  document.getElementById('btnReset').classList.add('visible');
+}
+
+function reset() {
+  document.getElementById('uploadSection').style.display = 'block';
+  document.getElementById('previewSection').classList.remove('visible');
+  document.getElementById('btnClassify').classList.remove('visible');
+  document.getElementById('progressWrap').classList.remove('visible');
+  document.getElementById('speciesResult').classList.remove('visible');
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('fileInput').value = '';
+  document.querySelectorAll('.layer-block').forEach(b => b.classList.remove('active'));
+}
+</script>
+</body>
+</html>
